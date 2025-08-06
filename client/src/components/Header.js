@@ -1,14 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, User, MessageCircle, Heart, ShoppingCartIcon, ChevronDown, Menu, X } from 'lucide-react';
+import { Search, User, MessageCircle, Heart, ShoppingCartIcon, ChevronDown, Menu, X, LogOut, Settings } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 
 const Header = () => {
   const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
+  const { itemCount } = useCart();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All category');
   const [language, setLanguage] = useState('English, USD');
   const [shippingTo, setShippingTo] = useState('🇩🇪');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef(null);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -42,7 +62,18 @@ const Header = () => {
   };
 
   const handleUserClick = () => {
-    alert('User profile functionality coming soon!');
+    console.log('User clicked, auth state:', { isAuthenticated, user });
+    if (isAuthenticated) {
+      setShowUserMenu(!showUserMenu);
+    } else {
+      navigate('/auth');
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    setShowUserMenu(false);
+    navigate('/');
   };
 
   const handleMessagesClick = () => {
@@ -113,13 +144,48 @@ const Header = () => {
 
           {/* User Icons */}
           <div className="flex items-center space-x-4">
-            <button 
-              onClick={handleUserClick}
-              className="text-gray-600 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-gray-100"
-              title="User Profile"
-            >
-              <User className="h-6 w-6" />
-            </button>
+            {/* User Profile */}
+            <div className="relative" ref={userMenuRef}>
+              <button 
+                onClick={handleUserClick}
+                className="text-gray-600 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-gray-100 flex items-center space-x-1"
+                title={isAuthenticated ? user?.name : "Sign In"}
+              >
+                <User className="h-6 w-6" />
+                {isAuthenticated && (
+                  <span className="text-sm font-medium">{user?.name}</span>
+                )}
+              </button>
+              
+              {/* User Dropdown Menu */}
+              {showUserMenu && isAuthenticated && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                    <p className="text-sm text-gray-500">{user?.email}</p>
+                    <p className="text-xs text-gray-400">Role: {user?.role}</p>
+                  </div>
+                  {user?.role === 'admin' && (
+                    <Link
+                      to="/admin"
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setShowUserMenu(false)}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Admin Panel
+                    </Link>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button 
               onClick={handleMessagesClick}
               className="text-gray-600 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-gray-100"
@@ -140,9 +206,11 @@ const Header = () => {
               title="Shopping Cart"
             >
               <ShoppingCartIcon className="h-6 w-6" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                3
-              </span>
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {itemCount}
+                </span>
+              )}
             </Link>
           </div>
         </div>
@@ -200,6 +268,32 @@ const Header = () => {
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200 bg-white">
             <div className="px-2 pt-2 pb-3 space-y-1">
+              {isAuthenticated && (
+                <div className="px-3 py-2 border-b border-gray-100">
+                  <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                  <p className="text-sm text-gray-500">{user?.email}</p>
+                  {user?.role === 'admin' && (
+                    <Link
+                      to="/admin"
+                      className="flex items-center text-sm text-blue-600 hover:text-blue-800 mt-1"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <Settings className="h-4 w-4 mr-1" />
+                      Admin Panel
+                    </Link>
+                  )}
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="flex items-center text-sm text-red-600 hover:text-red-800 mt-1"
+                  >
+                    <LogOut className="h-4 w-4 mr-1" />
+                    Sign Out
+                  </button>
+                </div>
+              )}
               <Link
                 to="/category/all"
                 className="flex items-center px-3 py-2 text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-md transition-colors"

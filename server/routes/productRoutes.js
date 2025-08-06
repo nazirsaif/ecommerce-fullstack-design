@@ -10,6 +10,7 @@ const {
   deleteProduct,
   getProductsByCategory
 } = require('../controllers/productController');
+const { protect, admin } = require('../middleware/auth');
 
 // Public routes
 router.get('/featured', getFeaturedProducts);
@@ -18,9 +19,9 @@ router.get('/category/:category', getProductsByCategory);
 router.get('/:id', getProductById);
 router.get('/', getAllProducts);
 
-// Admin routes (for future authentication)
-router.post('/', createProduct);
-router.put('/:id', updateProduct);
-router.delete('/:id', deleteProduct);
+// Admin routes (protected)
+router.post('/', protect, admin, createProduct);
+router.put('/:id', protect, admin, updateProduct);
+router.delete('/:id', protect, admin, deleteProduct);
 
 module.exports = router; 

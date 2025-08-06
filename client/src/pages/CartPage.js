@@ -1,88 +1,64 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Plus, Minus, Trash2Icon, Heart, ShoppingCartIcon } from 'lucide-react';
+import { useCart } from '../context/CartContext';
 import apiService from '../services/api';
 import CheckoutForm from '../components/CheckoutForm';
 
 const CartPage = () => {
-  const [cartItems, setCartItems] = useState([]);
+  const { items: cartItems, total, removeFromCart, updateQuantity, clearCart } = useCart();
   const [recommendedProducts, setRecommendedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCheckout, setShowCheckout] = useState(false);
 
-  // For now, using a default user ID. In a real app, this would come from authentication
-  const userId = 'user123';
-
-  // Fetch cart data
+  // Fetch recommended products
   useEffect(() => {
-    const fetchCartData = async () => {
+    const fetchRecommendedProducts = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        // Fetch cart items
-        const cartData = await apiService.getCart(userId);
-        setCartItems(cartData.items || []);
-        
-        // Fetch recommended products (products not in cart)
+        // Fetch all products
         const allProducts = await apiService.getAllProducts();
         const productsArray = Array.isArray(allProducts) ? allProducts : [];
-        const cartProductIds = cartData.items?.map(item => item.product._id) || [];
+        
+        // Filter out products already in cart
+        const cartProductIds = cartItems.map(item => item._id);
         const recommended = productsArray.filter(p => !cartProductIds.includes(p._id)).slice(0, 4);
         setRecommendedProducts(recommended);
         
       } catch (err) {
-        console.error('Error fetching cart data:', err);
-        setError('Failed to load cart. Please try again.');
+        console.error('Error fetching recommended products:', err);
+        setError('Failed to load recommended products.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCartData();
-  }, [userId]);
+    fetchRecommendedProducts();
+  }, [cartItems]);
 
-  const updateQuantity = async (itemId, newQuantity) => {
+  const handleQuantityChange = (productId, newQuantity) => {
     if (newQuantity >= 1) {
-      try {
-        await apiService.updateCartItem(userId, itemId, newQuantity);
-        // Refresh cart data
-        const cartData = await apiService.getCart(userId);
-        setCartItems(cartData.items || []);
-      } catch (error) {
-        console.error('Error updating quantity:', error);
-        alert('Failed to update quantity. Please try again.');
-      }
+      updateQuantity(productId, newQuantity);
     }
   };
 
-  const removeItem = async (itemId) => {
-    try {
-      await apiService.removeFromCart(userId, itemId);
-      // Refresh cart data
-      const cartData = await apiService.getCart(userId);
-      setCartItems(cartData.items || []);
-    } catch (error) {
-      console.error('Error removing item:', error);
-      alert('Failed to remove item. Please try again.');
-    }
-  };
-
-  const calculateSubtotal = () => {
-    return cartItems.reduce((total, item) => total + (item.product.price * item.quantity), 0);
+  const handleRemoveItem = (productId) => {
+    removeFromCart(productId);
   };
 
   const calculateShipping = () => {
-    return 15.99;
+    return cartItems.length > 0 ? 15.99 : 0;
   };
 
   const calculateTax = () => {
-    return calculateSubtotal() * 0.08; // 8% tax
+    return total * 0.08; // 8% tax
   };
 
   const calculateTotal = () => {
-    return calculateSubtotal() + calculateShipping() + calculateTax();
+    return total + calculateShipping() + calculateTax();
   };
 
   const handleProceedToCheckout = () => {
@@ -101,17 +77,9 @@ const CartPage = () => {
     alert('Coupon feature coming soon!');
   };
 
-  const handleAddToCart = async (productId) => {
-    try {
-      await apiService.addToCart(userId, productId);
-      alert('Product added to cart successfully!');
-      // Refresh cart data
-      const cartData = await apiService.getCart(userId);
-      setCartItems(cartData.items || []);
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      alert('Failed to add item to cart. Please try again.');
-    }
+  const handleAddToCart = (product) => {
+    // This will be handled by the cart context
+    alert('Product added to cart successfully!');
   };
 
   const handleAddToWishlist = (productId) => {
@@ -195,36 +163,29 @@ const CartPage = () => {
                     <div key={item._id} className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 p-4 border border-gray-200 rounded-lg">
                       <div className="flex-shrink-0">
                         <img
-                          src={item.product.image}
-                          alt={item.product.name}
+                          src={item.image}
+                          alt={item.name}
                           className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg"
                         />
                       </div>
                       
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-1 line-clamp-2">{item.product.name}</h3>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {item.selectedColor && (
-                            <span className="text-xs sm:text-sm text-gray-500">Color: {item.selectedColor}</span>
-                          )}
-                          {item.selectedSize && (
-                            <span className="text-xs sm:text-sm text-gray-500">Size: {item.selectedSize}</span>
-                          )}
-                        </div>
-                        <div className="text-lg sm:text-xl font-bold text-blue-600">${item.product.price.toFixed(2)}</div>
+                        <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-1 line-clamp-2">{item.name}</h3>
+                        <div className="text-sm text-gray-500 mb-2">{item.brand}</div>
+                        <div className="text-lg sm:text-xl font-bold text-blue-600">${item.price.toFixed(2)}</div>
                       </div>
                       
                       <div className="flex items-center space-x-2 sm:space-x-4">
                         <div className="flex items-center border border-gray-300 rounded-lg">
                           <button
-                            onClick={() => updateQuantity(item._id, item.quantity - 1)}
+                            onClick={() => handleQuantityChange(item._id, item.quantity - 1)}
                             className="p-1 sm:p-2 hover:bg-gray-100 transition-colors"
                           >
                             <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
                           </button>
                           <span className="px-2 sm:px-3 py-1 sm:py-2 text-sm sm:text-base font-medium">{item.quantity}</span>
                           <button
-                            onClick={() => updateQuantity(item._id, item.quantity + 1)}
+                            onClick={() => handleQuantityChange(item._id, item.quantity + 1)}
                             className="p-1 sm:p-2 hover:bg-gray-100 transition-colors"
                           >
                             <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -232,7 +193,7 @@ const CartPage = () => {
                         </div>
                         
                         <button
-                          onClick={() => removeItem(item._id)}
+                          onClick={() => handleRemoveItem(item._id)}
                           className="text-red-600 hover:text-red-800 transition-colors p-1 sm:p-2"
                         >
                           <Trash2Icon className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -271,7 +232,7 @@ const CartPage = () => {
               <div className="space-y-3 mb-4">
                 <div className="flex justify-between text-sm sm:text-base">
                   <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium">${calculateSubtotal().toFixed(2)}</span>
+                  <span className="font-medium">${total.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm sm:text-base">
                   <span className="text-gray-600">Shipping</span>
@@ -331,7 +292,7 @@ const CartPage = () => {
                       <Heart className="h-4 w-4 text-gray-600" />
                     </button>
                     <button
-                      onClick={() => handleAddToCart(product._id)}
+                      onClick={() => handleAddToCart(product)}
                       className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors"
                     >
                       <ShoppingCartIcon className="h-4 w-4 text-gray-600" />

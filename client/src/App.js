@@ -1,11 +1,16 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { CartProvider } from './context/CartContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import ProductListingPage from './pages/ProductListingPage';
 import ProductDetailsPage from './pages/ProductDetailsPage';
 import CartPage from './pages/CartPage';
+import AuthPage from './pages/AuthPage';
+import AdminPage from './pages/AdminPage';
+import TestAuthPage from './pages/TestAuthPage';
 import './App.css';
 
 // Placeholder components for missing pages
@@ -39,25 +44,32 @@ const MenuPage = () => (
 
 function App() {
   return (
-    <Router>
-      <div className="App min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/products" element={<ProductListingPage />} />
-            <Route path="/category/:category" element={<ProductListingPage />} />
-            <Route path="/product/:id" element={<ProductDetailsPage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/deals" element={<DealsPage />} />
-            <Route path="/gifts" element={<GiftsPage />} />
-            <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/menu" element={<MenuPage />} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
-    </Router>
+    <AuthProvider>
+      <CartProvider>
+        <Router>
+          <div className="App min-h-screen flex flex-col">
+            <Header />
+            <main className="flex-1">
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/products" element={<ProductListingPage />} />
+                <Route path="/category/:category" element={<ProductListingPage />} />
+                <Route path="/product/:id" element={<ProductDetailsPage />} />
+                <Route path="/cart" element={<CartPage />} />
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/admin" element={<AdminPage />} />
+                <Route path="/test-auth" element={<TestAuthPage />} />
+                <Route path="/deals" element={<DealsPage />} />
+                <Route path="/gifts" element={<GiftsPage />} />
+                <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/menu" element={<MenuPage />} />
+              </Routes>
+            </main>
+            <Footer />
+          </div>
+        </Router>
+      </CartProvider>
+    </AuthProvider>
   );
 }
 

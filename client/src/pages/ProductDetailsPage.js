@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Star, ChevronRight, Heart, ShoppingCartIcon, MessageCircle, PackageIcon, Truck, Shield, CheckCircle } from 'lucide-react';
+import { useCart } from '../context/CartContext';
 import apiService from '../services/api';
 
 const ProductDetailsPage = () => {
   const { id } = useParams();
+  const { addToCart, isInCart } = useCart();
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,24 +43,17 @@ const ProductDetailsPage = () => {
     }
   }, [id]);
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = () => {
     if (!product) return;
     
-    try {
-      // For now, using a default user ID. In a real app, this would come from authentication
-      const userId = 'user123';
-      
-      if (!product.inStock) {
-        alert('Product is out of stock!');
-        return;
-      }
-      
-      await apiService.addToCart(userId, product._id, quantity, selectedColor, selectedSize);
-      alert(`Added ${quantity} ${product.name} to cart successfully!`);
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      alert('Failed to add item to cart. Please try again.');
+    if (!product.inStock) {
+      alert('Product is out of stock!');
+      return;
     }
+    
+    // Add the product to cart using context
+    addToCart(product);
+    alert(`Added ${quantity} ${product.name} to cart successfully!`);
   };
 
   const handleBuyNow = () => {
